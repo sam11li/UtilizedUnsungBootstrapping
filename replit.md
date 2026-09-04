@@ -1,6 +1,6 @@
-# [Project name]
+# Northstar AI Agent Control Center
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Mobile-friendly control center for a shared Replit API that routes VS Code and Kali Linux/Open Interpreter requests to an Ollama model and shared agent memory.
 
 ## Run & Operate
 
@@ -10,6 +10,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- Optional/runtime env: `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_AUTH_TOKEN`, `OLLAMA_AUTOSTART`, `OLLAMA_HOST`, `OLLAMA_MODELS`, `AI_API_KEY`, and `AGENT_DATA_DIR`
 
 ## Stack
 
@@ -22,23 +23,32 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/ai-agent-dashboard` — responsive dashboard routes for overview, models, memory, and settings
+- `artifacts/api-server/src/routes/control-center.ts` — model manager, Ollama status, shared memory, and OpenAI-compatible proxy
+- `artifacts/api-server/src/lib/ollama.ts` — Ollama connection, pull, chat, and unload behavior
+- `lib/api-spec/openapi.yaml` — source of truth for generated API hooks and validation schemas
+- `docs/OLLAMA_SETUP.md` — setup and two-environment connection guide
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Ollama is configured through environment variables; the server never assumes `localhost` for a remote model host.
+- Model registration and model availability are separate states; the dashboard only reports downloaded/loaded after Ollama verifies them.
+- VS Code and Kali Linux remain separate client environments while using the same Replit API, active model, and shared memory.
+- The control center stores model registrations and shared memory in the configured persistent data directory.
+- When `OLLAMA_AUTOSTART=true` and the endpoint is local, the API server starts Ollama automatically; remote Ollama endpoints are never overridden.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The app manages Ollama model references, pull progress, availability, activation, unload/remove actions, API connection details, runtime status, shared memory, and the environment selection flow for VS Code or Kali Linux.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+The default Ollama model is `hf.co/ICEPVP8977/Uncensored_Qwen1.5_1.8B_Chat:Q4_K_M`.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Ollama must be installed and running on a host reachable from the Replit API server; registering a reference does not download it.
+- Regenerate client and Zod code after every OpenAPI change with `pnpm --filter @workspace/api-spec run codegen`.
 
 ## Pointers
 

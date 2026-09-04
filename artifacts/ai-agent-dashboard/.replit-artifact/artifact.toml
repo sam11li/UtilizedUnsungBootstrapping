@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Northstar AI Agent Control Center"
+description = "A private web control center for hosting the configured Ollama model, chatting with it through an OpenAI-compatible API, monitoring runtime health, and viewing model activity charts."
+version = "1.0.0"
+id = "artifacts/ai-agent-dashboard"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22588
+
+[services.development]
+run = "pnpm --filter @workspace/ai-agent-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ai-agent-dashboard", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ai-agent-dashboard/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22588"
+BASE_PATH = "/"

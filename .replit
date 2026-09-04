@@ -18,3 +18,16 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+packages = ["ollama"]
+
+[userenv]
+
+[userenv.shared]
+OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+OLLAMA_HOST = "127.0.0.1:11434"
+OLLAMA_MODEL = "hf.co/ICEPVP8977/Uncensored_Qwen1.5_1.8B_Chat:Q4_K_M"
+OLLAMA_MODELS = "/home/runner/workspace/.ollama-models"
+OLLAMA_AUTOSTART = "true"

@@ -10,6 +10,18 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Dashboard overview
+  - name: models
+    description: Hugging Face model management
+  - name: system
+    description: Runtime system status
+  - name: memory
+    description: Shared agent memory
+  - name: ollama
+    description: Ollama connection and runtime
+  - name: inference
+    description: OpenAI-compatible inference API
 paths:
   /healthz:
     get:
@@ -24,6 +36,312 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard overview
+      responses:
+        "200":
+          description: Dashboard overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardOverview"
+  /models:
+    get:
+      operationId: listModels
+      tags: [models]
+      summary: List installed models
+      responses:
+        "200":
+          description: Installed models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Model"
+  /models/download:
+    post:
+      operationId: downloadModel
+      tags: [models]
+      summary: Add a Hugging Face model for download
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelDownloadInput"
+      responses:
+        "202":
+          description: Download queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Model"
+        "400":
+          description: Invalid model URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /models/activate:
+    post:
+      operationId: activateModel
+      tags: [models]
+      summary: Activate an installed model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelActionInput"
+      responses:
+        "200":
+          description: Activated model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Model"
+        "404":
+          description: Model not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /models/unload:
+    post:
+      operationId: unloadModel
+      tags: [models]
+      summary: Unload a model from Ollama memory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelActionInput"
+      responses:
+        "200":
+          description: Unloaded model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Model"
+        "400":
+          description: Model cannot be unloaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /models/{modelId}:
+    delete:
+      operationId: removeModel
+      tags: [models]
+      summary: Remove an installed model
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Model removed
+        "400":
+          description: Active model cannot be removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Model not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /models/active:
+    get:
+      operationId: getActiveModel
+      tags: [models]
+      summary: Get the active model
+      responses:
+        "200":
+          description: Active model or null
+          content:
+            application/json:
+              schema:
+                type: ["object", "null"]
+                properties:
+                  id:
+                    type: string
+                additionalProperties: true
+  /models/status:
+    get:
+      operationId: getModelStatus
+      tags: [models]
+      summary: Get model loading status
+      responses:
+        "200":
+          description: Model status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelStatus"
+  /ollama/status:
+    get:
+      operationId: getOllamaStatus
+      tags: [ollama]
+      summary: Check the configured Ollama server
+      responses:
+        "200":
+          description: Ollama connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OllamaStatus"
+  /ollama/test:
+    post:
+      operationId: testOllamaConnection
+      tags: [ollama]
+      summary: Test the configured Ollama server
+      responses:
+        "200":
+          description: Ollama connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OllamaStatus"
+  /system:
+    get:
+      operationId: getSystemStatus
+      tags: [system]
+      summary: Get server and resource status
+      responses:
+        "200":
+          description: System status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+  /memory:
+    get:
+      operationId: listMemory
+      tags: [memory]
+      summary: List shared agent memory
+      responses:
+        "200":
+          description: Shared memory entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemoryEntry"
+    post:
+      operationId: createMemory
+      tags: [memory]
+      summary: Save a shared memory entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemoryInput"
+      responses:
+        "201":
+          description: Memory entry saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryEntry"
+  /chat:
+    post:
+      operationId: createDashboardChat
+      tags: [inference]
+      summary: Chat with the active Ollama model from the dashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatCompletionInput"
+      responses:
+        "200":
+          description: Chat completion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatCompletionResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Ollama is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/models:
+    get:
+      operationId: listOpenAiModels
+      tags: [inference]
+      summary: List models through the OpenAI-compatible API
+      responses:
+        "200":
+          description: OpenAI-compatible model list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenAiModelList"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/chat/completions:
+    post:
+      operationId: createChatCompletion
+      tags: [inference]
+      summary: Create a chat completion through Ollama
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatCompletionInput"
+      responses:
+        "200":
+          description: Chat completion or server-sent event stream
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatCompletionResponse"
+            text/event-stream:
+              schema:
+                type: string
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Ollama is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +351,234 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        repository:
+          type: string
+        parameters:
+          type: ["string", "null"]
+        format:
+          type: string
+        status:
+          type: string
+          enum: [registered, downloading, downloaded, loading, loaded, active, error]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+        active:
+          type: boolean
+        isDefault:
+          type: boolean
+        size:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+      required: [id, name, repository, parameters, format, status, progress, active, isDefault, size, updatedAt]
+    ModelDownloadInput:
+      type: object
+      properties:
+        repository:
+          type: string
+          minLength: 1
+      required: [repository]
+    ModelActionInput:
+      type: object
+      properties:
+        modelId:
+          type: string
+          minLength: 1
+      required: [modelId]
+    ModelStatus:
+      type: object
+      properties:
+        state:
+          type: string
+          enum: [idle, registered, downloading, downloaded, loading, loaded, active, error]
+        message:
+          type: string
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+        modelId:
+          type: ["string", "null"]
+      required: [state, message, progress, modelId]
+    SystemStatus:
+      type: object
+      properties:
+        server:
+          type: string
+        api:
+          type: string
+        cpu:
+          type: number
+        memory:
+          type: number
+        storage:
+          type: number
+        uptime:
+          type: string
+      required: [server, api, cpu, memory, storage, uptime]
+    DashboardOverview:
+      type: object
+      properties:
+        installedModels:
+          type: number
+        readyModels:
+          type: number
+        activeModel:
+          type: ["string", "null"]
+        memoryEntries:
+          type: number
+        apiEndpoint:
+          type: string
+        apiStatus:
+          type: string
+        apiKeyConfigured:
+          type: boolean
+        defaultModel:
+          type: string
+      required: [installedModels, readyModels, activeModel, memoryEntries, apiEndpoint, apiStatus, apiKeyConfigured, defaultModel]
+    OllamaStatus:
+      type: object
+      properties:
+        available:
+          type: boolean
+        endpoint:
+          type: ["string", "null"]
+        version:
+          type: ["string", "null"]
+        message:
+          type: string
+        modelAvailable:
+          type: boolean
+        activeModel:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+      required: [available, endpoint, version, message, modelAvailable, activeModel, error]
+    MemoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, title, content, category, updatedAt]
+    MemoryInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+        category:
+          type: string
+      required: [title, content, category]
+    OpenAiModel:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created:
+          type: number
+        ownedBy:
+          type: string
+      required: [id, object, created, ownedBy]
+    OpenAiModelList:
+      type: object
+      properties:
+        object:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpenAiModel"
+      required: [object, data]
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant, tool]
+        content:
+          type: string
+      required: [role, content]
+    ChatCompletionInput:
+      type: object
+      properties:
+        model:
+          type: string
+        messages:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        stream:
+          type: boolean
+        temperature:
+          type: number
+        max_tokens:
+          type: number
+      required: [messages]
+    ChatCompletionChoice:
+      type: object
+      properties:
+        index:
+          type: number
+        message:
+          $ref: "#/components/schemas/ChatMessage"
+        finish_reason:
+          type: ["string", "null"]
+      required: [index, message, finish_reason]
+    ChatCompletionUsage:
+      type: object
+      properties:
+        prompt_tokens:
+          type: number
+        completion_tokens:
+          type: number
+        total_tokens:
+          type: number
+      required: [prompt_tokens, completion_tokens, total_tokens]
+    ChatCompletionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created:
+          type: number
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatCompletionChoice"
+        usage:
+          $ref: "#/components/schemas/ChatCompletionUsage"
+      required: [id, object, created, model, choices, usage]
 
