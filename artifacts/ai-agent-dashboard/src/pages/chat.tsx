@@ -17,6 +17,7 @@ import { EmptyState, LoadingButton, PageIntro, Panel, ProgressBar, StatusPill } 
 
 type Message = { role: 'user' | 'assistant'; content: string; id: string; meta?: { total: number; prompt: number; completion: number; latency: number } };
 type Environment = 'vscode' | 'kali';
+type SavedConversation = { id: string; title: string; messages: Message[]; updatedAt: string };
 const defaultModel = 'hf.co/ICEPVP8977/Uncensored_Qwen1.5_1.8B_Chat:Q4_K_M';
 
 function isResponse(value: unknown): value is ChatCompletionResponse {
@@ -32,6 +33,8 @@ export default function Chat() {
   const [agent, setAgent] = useState<{ status: string; agentId: string | null } | null>(null);
   const [kaliPending, setKaliPending] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationId, setConversationId] = useState(() => `conversation-${Date.now()}`);
+  const [history, setHistory] = useState<SavedConversation[]>([]);
   const [notice, setNotice] = useState('');
   const startedAt = useRef(0);
   const queryClient = useQueryClient();
@@ -51,6 +54,21 @@ export default function Chat() {
     const timer = window.setInterval(refresh, 5000);
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('northstar-conversations');
+      if (saved) setHistory(JSON.parse(saved) as SavedConversation[]);
+    } catch {
+      setHistory([]);
+    }
+  }, []);
+  useEffect(() => {
+    if (!messages.length) return;
+    const firstUser = messages.find((message) => message.role === 'user');
+    const next = [{ id: conversationId, title: firstUser?.content.slice(0, 48) || 'New conversation', messages, updatedAt: new Date().toISOString() }, ...history.filter((item) => item.id !== conversationId)].slice(0, 12);
+    setHistory(next);
+    window.localStorage.setItem('northstar-conversations', JSON.stringify(next));
+  }, [messages, conversationId]);
 
   const sendMessage = async (event: FormEvent) => {
     event.preventDefault();
@@ -123,6 +141,9 @@ export default function Chat() {
     setMessages([]);
     setNotice('');
   };
+  const newConversation = () => { setConversationId(`conversation-${Date.now()}`); clearThread(); };
+  const loadConversation = (conversation: SavedConversation) => { setConversationId(conversation.id); setMessages(conversation.messages); setNotice(''); };
+  const deleteConversation = (id: string) => { const next = history.filter((item) => item.id !== id); setHistory(next); window.localStorage.setItem('northstar-conversations', JSON.stringify(next)); if (id === conversationId) newConversation(); };
 
   return (
     <AppShell>
@@ -156,7 +177,8 @@ export default function Chat() {
             </div>
           </form>
         </Panel>
-        <aside className="space-y-4">
+         <aside className="space-y-4">
+           <Panel title="Conversation history" kicker="Saved in this browser"><div className="space-y-2 p-4"><button onClick={newConversation} className="w-full rounded-lg bg-primary px-3 py-2 text-[11px] font-extrabold text-primary-foreground" data-testid="button-new-conversation">New conversation</button>{history.length ? history.map((conversation) => <div key={conversation.id} className={`flex items-center gap-2 rounded-lg border p-2 ${conversation.id === conversationId ? 'border-primary/50 bg-primary/5' : 'border-border'}`}><button onClick={() => loadConversation(conversation)} className="min-w-0 flex-1 truncate text-left text-[10px] font-bold">{conversation.title}</button><button onClick={() => deleteConversation(conversation.id)} className="px-1 text-[10px] text-muted-foreground hover:text-destructive" aria-label={`Delete ${conversation.title}`}>×</button></div>) : <p className="text-[11px] text-muted-foreground">No saved conversations yet.</p>}</div></Panel>
           <Panel title="Inference controls" kicker="Applied to the next request">
             <div className="space-y-5 p-5">
               <div><label htmlFor="chat-model" className="text-[11px] font-extrabold uppercase tracking-wider">Model</label><select id="chat-model" value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 font-mono text-[10px] outline-none focus:border-primary" data-testid="select-chat-model"><option value="">{activeModel ? `Active · ${activeModel}` : defaultModel}</option>{availableModels.filter((item) => item !== activeModel).map((item) => <option value={item} key={item}>{item}</option>)}</select></div>

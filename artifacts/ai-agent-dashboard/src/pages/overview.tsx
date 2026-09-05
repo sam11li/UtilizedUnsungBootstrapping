@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { ArrowUpRight, Bot, Braces, CheckCircle2, Code2, Download, HardDrive, LockKeyhole, Plus, Radar, RefreshCw, TerminalSquare, Zap } from 'lucide-react';
 import { useGetActiveModel, useGetDashboard, useGetModelStatus, useHealthCheck, useListModels, getGetActiveModelQueryKey, getGetDashboardQueryKey, getGetModelStatusQueryKey, getHealthCheckQueryKey, getListModelsQueryKey } from '@workspace/api-client-react';
@@ -14,6 +14,7 @@ function timeAgo(value?: string) {
 }
 
 export default function Overview() {
+  const [agentStatus, setAgentStatus] = useState<'online' | 'offline' | 'revoked'>('offline');
   const dashboard = useGetDashboard({ query: { queryKey: getGetDashboardQueryKey(), refetchInterval: 30000 } });
   const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 30000 } });
   const models = useListModels({ query: { queryKey: getListModelsQueryKey() } });
@@ -21,6 +22,12 @@ export default function Overview() {
   const modelStatus = useGetModelStatus({ query: { queryKey: getGetModelStatusQueryKey(), refetchInterval: 3000 } });
   const overview = dashboard.data;
   const hasError = dashboard.isError && health.isError;
+  useEffect(() => {
+    const refresh = () => { void fetch('/api/agents/status').then((response) => response.json()).then((value) => setAgentStatus(value.agent?.status ?? 'offline')).catch(() => setAgentStatus('offline')); };
+    refresh();
+    const timer = window.setInterval(refresh, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return <AppShell><PageIntro eyebrow="Command center · live" title="Good morning, operator." description="A clear read on the agent that keeps both workspaces moving." action={<Link href="/models" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground transition-transform hover:brightness-105 active:scale-[0.98]" data-testid="link-manage-models"><Bot size={15} /> Manage models <ArrowUpRight size={14} /></Link>} />
     <QueryState loading={dashboard.isLoading} error={hasError} retry={() => { dashboard.refetch(); health.refetch(); }} label="overview">
@@ -32,7 +39,7 @@ export default function Overview() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
         <Panel title="Connected environments" kicker="Two workspaces, one shared agent">
-          <div className="grid divide-y divide-border/70 md:grid-cols-2 md:divide-x md:divide-y-0"><Environment icon={<Code2 size={19} />} title="VS Code" detail="Application development" status="Connected" accent="primary" /><Environment icon={<TerminalSquare size={19} />} title="Kali Linux" detail="Security tooling" status="Connected" accent="accent" /></div>
+           <div className="grid divide-y divide-border/70 md:grid-cols-2 md:divide-x md:divide-y-0"><Environment icon={<Code2 size={19} />} title="VS Code" detail="Application development" status={dashboard.data?.apiKeyConfigured ? 'ONLINE' : 'OFFLINE'} accent="primary" /><Environment icon={<TerminalSquare size={19} />} title="Kali Linux" detail="Security tooling" status={agentStatus === 'online' ? 'ONLINE' : 'OFFLINE'} accent="accent" /></div>
         </Panel>
         <Panel title="Quick actions" kicker="Common operator moves"><div className="grid grid-cols-2 gap-2 p-4"><QuickAction href="/models" icon={<Download size={16} />} label="Add model" /><QuickAction href="/memory" icon={<Plus size={16} />} label="Save memory" /><QuickAction href="/settings" icon={<LockKeyhole size={16} />} label="Check access" /><QuickAction href="/settings" icon={<Radar size={16} />} label="System status" /></div></Panel>
       </div>

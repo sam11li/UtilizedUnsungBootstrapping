@@ -86,6 +86,12 @@ function modelIsAvailable(
   return names.has(model.repository);
 }
 
+function externalApiBaseUrl(req: Request): string {
+  const protocol = req.header("x-forwarded-proto")?.split(",")[0]?.trim() || req.protocol;
+  const host = req.header("x-forwarded-host")?.split(",")[0]?.trim() || req.get("host") || "localhost";
+  return `${protocol}://${host}/api/v1`;
+}
+
 async function refreshModels(): Promise<void> {
   const snapshot = await checkOllama();
   const names = new Set(snapshot.models.map((model) => model.name ?? ""));
@@ -156,7 +162,7 @@ function openAiModel(model: ModelRecord) {
   };
 }
 
-router.get("/dashboard", async (_req, res): Promise<void> => {
+router.get("/dashboard", async (req, res): Promise<void> => {
   await refreshModels();
   const activeModel = store.models.find((model) => model.active);
   res.json(
@@ -167,7 +173,7 @@ router.get("/dashboard", async (_req, res): Promise<void> => {
       ).length,
       activeModel: activeModel?.name ?? null,
       memoryEntries: store.memory.length,
-      apiEndpoint: "/api/v1",
+       apiEndpoint: externalApiBaseUrl(req),
       apiStatus: isApiKeyConfigured() ? "ready" : "key required",
       apiKeyConfigured: isApiKeyConfigured(),
       defaultModel: getOllamaModel(),
@@ -393,6 +399,34 @@ router.post("/ollama/test", async (_req, res): Promise<void> => {
 
 router.post("/diagnostics/test", async (_req, res): Promise<void> => {
   const ollama = await checkOllama();
+  const configuredApiKey = process.env.AI_API_KEY?.trim();
+  let protectedApi: { status: "connected" | "failed" | "not_configured"; message: string } = {
+    status: "not_configured",
+    message: "Set AI_API_KEY in Replit Secrets to enable external clients.",
+  };
+  if (configuredApiKey) {
+    try {
+      const apiBase = `http://127.0.0.1:${process.env.PORT ?? "8080"}/api/v1`;
+      const headers = { Authorization: `Bearer ${configuredApiKey}` };
+      const modelsResponse = await fetch(`${apiBase}/models`, { headers });
+      const chatResponse = await fetch(`${apiBase}/chat/completions`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: getOllamaModel(),
+          messages: [{ role: "user", content: "Reply with exactly: API test passed." }],
+          stream: false,
+          max_tokens: 16,
+        }),
+      });
+      protectedApi =
+        modelsResponse.ok && chatResponse.ok
+          ? { status: "connected", message: "Authentication, models, and chat endpoints passed." }
+          : { status: "failed", message: `Models HTTP ${modelsResponse.status}; chat HTTP ${chatResponse.status}.` };
+    } catch (error) {
+      protectedApi = { status: "failed", message: error instanceof Error ? error.message : "Protected API test failed." };
+    }
+  }
   let inference: { status: "success" | "failed" | "skipped"; message: string } = {
     status: "skipped",
     message: "Inference skipped because Ollama/model is unavailable.",
@@ -414,11 +448,9 @@ router.post("/diagnostics/test", async (_req, res): Promise<void> => {
   }
   res.json({
     api: {
-      status: isApiKeyConfigured() ? "connected" : "not_configured",
+      status: protectedApi.status,
       keyConfigured: isApiKeyConfigured(),
-      message: isApiKeyConfigured()
-        ? "Protected API key is configured."
-        : "Set AI_API_KEY in Replit Secrets to enable external clients.",
+      message: protectedApi.message,
     },
     ollama: {
       status: ollama.available ? "connected" : "disconnected",

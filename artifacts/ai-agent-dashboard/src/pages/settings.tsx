@@ -16,7 +16,7 @@ export default function Settings() {
   const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 30000 } });
   const ollama = useGetOllamaStatus({ query: { queryKey: getGetOllamaStatusQueryKey(), refetchInterval: 15000 } });
   const testOllama = useTestOllamaConnection();
-  const endpoint = `${window.location.origin}/api/v1`;
+  const endpoint = dashboard.data?.apiEndpoint && dashboard.data.apiEndpoint !== '/api/v1' ? dashboard.data.apiEndpoint : `${window.location.origin}/api/v1`;
   const copyEndpoint = () => { void navigator.clipboard?.writeText(endpoint); setCopied(true); window.setTimeout(() => setCopied(false), 1800); };
   const apiKeyConfigured = dashboard.data?.apiKeyConfigured ?? false;
   const refreshAll = () => { dashboard.refetch(); system.refetch(); health.refetch(); ollama.refetch(); };
