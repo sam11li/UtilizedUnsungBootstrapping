@@ -37,6 +37,18 @@ import {
   getOllamaModel,
   isApiKeyConfigured,
 } from "../lib/runtime-config";
+import {
+  type AgentTask,
+  claimNextTask,
+  completeAgentTask,
+  createPairing,
+  getAgentStatus,
+  getAgentTask,
+  isAgentAuthenticated,
+  queueAgentTask,
+  registerAgent,
+  revokeAgent,
+} from "../lib/agent-bridge";
 
 const router: IRouter = Router();
 const pullJobs = new Map<
@@ -377,6 +389,144 @@ router.get("/ollama/status", async (_req, res): Promise<void> => {
 router.post("/ollama/test", async (_req, res): Promise<void> => {
   const status = await checkOllama();
   res.json(GetOllamaStatusResponse.parse(status));
+});
+
+router.post("/diagnostics/test", async (_req, res): Promise<void> => {
+  const ollama = await checkOllama();
+  let inference: { status: "success" | "failed" | "skipped"; message: string } = {
+    status: "skipped",
+    message: "Inference skipped because Ollama/model is unavailable.",
+  };
+  if (ollama.available && ollama.modelAvailable) {
+    try {
+      const response = await ollamaChat({
+        model: getOllamaModel(),
+        messages: [{ role: "user", content: "Reply with exactly: Northstar test passed." }],
+        stream: false,
+        options: { temperature: 0, num_predict: 32 },
+      });
+      inference = response.ok
+        ? { status: "success", message: "Model inference succeeded." }
+        : { status: "failed", message: `Model returned HTTP ${response.status}.` };
+    } catch (error) {
+      inference = { status: "failed", message: error instanceof Error ? error.message : "Inference failed." };
+    }
+  }
+  res.json({
+    api: {
+      status: isApiKeyConfigured() ? "connected" : "not_configured",
+      keyConfigured: isApiKeyConfigured(),
+      message: isApiKeyConfigured()
+        ? "Protected API key is configured."
+        : "Set AI_API_KEY in Replit Secrets to enable external clients.",
+    },
+    ollama: {
+      status: ollama.available ? "connected" : "disconnected",
+      message: ollama.message,
+    },
+    model: {
+      status: ollama.modelAvailable ? (ollama.activeModel ? "loaded" : "available") : "unavailable",
+      reference: getOllamaModel(),
+    },
+    inference,
+    testedAt: now(),
+  });
+});
+
+router.get("/agents/status", (_req, res): void => {
+  const agent = getAgentStatus();
+  res.json({
+    agent: agent ?? {
+      agentId: null,
+      name: "Kali Linux",
+      status: "offline",
+      lastSeen: null,
+      connectedAt: null,
+    },
+  });
+});
+
+router.post("/agents/pair", (_req, res): void => {
+  res.status(201).json(createPairing());
+});
+
+router.post("/agents/register", (req, res): void => {
+  const { agentId, credential, name } = req.body as Record<string, unknown>;
+  if (typeof agentId !== "string" || typeof credential !== "string") {
+    res.status(400).json({ error: "agentId and credential are required." });
+    return;
+  }
+  if (!registerAgent(agentId, credential, typeof name === "string" ? name : "Kali Linux")) {
+    res.status(401).json({ error: "Invalid or expired pairing credential." });
+    return;
+  }
+  res.json({ ok: true, agentId, status: "online" });
+});
+
+router.post("/agents/heartbeat", (req, res): void => {
+  const { agentId, credential } = req.body as Record<string, unknown>;
+  if (typeof agentId !== "string" || typeof credential !== "string" || !getAgentStatus()) {
+    res.status(401).json({ error: "Agent authentication failed." });
+    return;
+  }
+  const task = claimNextTask(agentId, credential);
+  res.json({ ok: true, task });
+});
+
+router.get("/agents/tasks", (req, res): void => {
+  const agentId = String(req.query.agentId ?? "");
+  const credential = String(req.query.credential ?? "");
+  if (!isAgentAuthenticated(agentId, credential)) {
+    res.status(401).json({ error: "Agent authentication failed." });
+    return;
+  }
+  const task = claimNextTask(agentId, credential);
+  res.json({ task });
+});
+
+router.get("/agents/tasks/:taskId", (req, res): void => {
+  const task = getAgentTask(req.params.taskId);
+  if (!task) {
+    res.status(404).json({ error: "Task not found." });
+    return;
+  }
+  res.json(task);
+});
+
+router.post("/agents/tasks", (req, res): void => {
+  const agent = getAgentStatus();
+  if (!agent || agent.status !== "online") {
+    res.status(409).json({ error: "Kali Agent is offline." });
+    return;
+  }
+  const body = req.body as { messages?: AgentTask["messages"]; model?: string };
+  if (!Array.isArray(body.messages) || body.messages.length === 0) {
+    res.status(400).json({ error: "messages are required." });
+    return;
+  }
+  res.status(202).json(queueAgentTask(body.messages, body.model ?? null));
+});
+
+router.post("/agents/tasks/:taskId/result", (req, res): void => {
+  const { agentId, credential, result, error } = req.body as Record<string, unknown>;
+  if (typeof agentId !== "string" || typeof credential !== "string" || typeof result !== "string") {
+    res.status(400).json({ error: "agentId, credential, and result are required." });
+    return;
+  }
+  if (!completeAgentTask(req.params.taskId, agentId, credential, result, typeof error === "string" ? error : null)) {
+    res.status(401).json({ error: "Agent authentication failed or task is missing." });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+router.post("/agents/revoke", (req, res): void => {
+  const { agentId } = req.body as Record<string, unknown>;
+  if (typeof agentId !== "string" || !revokeAgent(agentId)) {
+    res.status(404).json({ error: "Agent not found." });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 router.get("/system", (_req, res): void => {

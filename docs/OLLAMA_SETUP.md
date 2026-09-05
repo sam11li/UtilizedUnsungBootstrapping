@@ -69,6 +69,22 @@ Configure the VS Code AI extension to use the Replit API base URL from Settings 
 
 Install Open Interpreter inside the Kali VM, not on the Windows host. Configure it with the same Replit API base URL and API key. Kali remains a separate security-tooling environment.
 
+## Kali Agent bridge
+
+The dashboard can issue tasks to a connector that runs inside Kali. In Settings, generate a one-time pairing credential and copy the displayed values into Kali:
+
+```bash
+sudo apt update && sudo apt install -y python3
+python3 -m pip install --user open-interpreter
+export NORTHSTAR_API_BASE_URL="https://YOUR-REPLIT-DOMAIN/api"
+export NORTHSTAR_AGENT_ID="kali-..."
+export NORTHSTAR_AGENT_CREDENTIAL="northstar_..."
+export NORTHSTAR_MODEL="hf.co/ICEPVP8977/Uncensored_Qwen1.5_1.8B_Chat:Q4_K_M"
+python3 tools/kali-agent.py
+```
+
+The bridge makes outbound HTTPS requests only; it does not expose a Kali port publicly. It registers, sends heartbeats, polls authorized tasks, runs Open Interpreter locally, and posts results back. The credential is shown once and must be kept in Kali environment variables.
+
 Both clients use the same active Ollama model and shared memory, while their local files and tools remain isolated.
 
 ## Troubleshooting

@@ -1,0 +1,483 @@
+Continue the existing project exactly as it is. Do NOT rebuild it from scratch and do NOT remove or break any existing functionality.
+
+The project already contains:
+
+- Replit backend
+- React dashboard
+- Overview
+- Models/model manager
+- Shared persistent Memory
+- Settings
+- Ollama backend integration
+- OpenAI-compatible API
+- /api/v1/models
+- /api/v1/chat/completions
+- API-key authentication
+- Existing model reference:
+  hf.co/ICEPVP8977/Uncensored_Qwen1.5_1.8B_Chat:Q4_K_M
+- Ollama model status/management
+- VS Code environment configuration
+- Kali Linux environment configuration
+- Mobile-friendly interface
+- Chat tab
+
+Now finish the project so the API, Chat, VS Code environment, and Kali/Open Interpreter environment actually work together.
+
+==================================================
+1. API KEY CONFIGURATION
+==================================================
+
+The Settings page currently shows:
+
+API base URL: /api/v1
+API key: Not configured
+SET AI_API_KEY
+
+Use the existing AI_API_KEY environment secret.
+
+If AI_API_KEY does not exist, show:
+
+API key: NOT CONFIGURED
+
+If AI_API_KEY exists, show:
+
+API key: CONFIGURED
+
+Never expose the full API key in:
+
+- Frontend source
+- Browser JavaScript
+- Logs
+- API responses
+- GitHub
+- Chat messages
+
+The API must require the configured key for protected /api/v1 requests.
+
+Keep the existing endpoints:
+
+/api/v1/models
+/api/v1/chat/completions
+
+Make the Settings page display the complete externally reachable API base URL dynamically instead of only:
+
+/api/v1
+
+For example:
+
+https://YOUR-REPLIT-DOMAIN/api/v1
+
+Do NOT hard-code a Replit domain.
+
+Add a copy button for the API base URL.
+
+Add an API connection test that verifies:
+
+- API reachable
+- Authentication accepted
+- Models endpoint works
+- Chat endpoint works
+- Configured model is reachable
+
+Do not report the API as fully operational unless the actual test succeeds.
+
+==================================================
+2. OLLAMA
+==================================================
+
+Preserve the existing Ollama/model-manager implementation.
+
+Use the existing model:
+
+hf.co/ICEPVP8977/Uncensored_Qwen1.5_1.8B_Chat:Q4_K_M
+
+Do not create a second AI provider.
+
+Do not falsely mark Ollama as connected merely because configuration exists.
+
+Verify separately:
+
+- Ollama configured
+- Ollama reachable
+- Model available
+- Model loaded
+- Inference successful
+
+If the Ollama endpoint is:
+
+http://127.0.0.1:11434
+
+remember that 127.0.0.1 means localhost of the machine running Ollama. Do not treat it as the user's Windows PC or Kali VM when the Replit backend is running remotely.
+
+==================================================
+3. CHAT / AGENT INTERFACE
+==================================================
+
+Make the existing Chat tab the main control center.
+
+It must contain:
+
+- Conversation area
+- User messages
+- Agent responses
+- Streaming responses where supported
+- Message input
+- Send button
+- Stop button
+- New conversation
+- Clear conversation
+- Conversation history
+- Current model
+- Current environment
+- Connection status
+
+Add an environment selector:
+
+WHERE DO YOU WANT TO WORK?
+
+Options:
+
+VS Code
+Kali Linux
+
+The selected environment must be clearly displayed.
+
+Example:
+
+Environment: Kali Linux
+Model: hf.co/ICEPVP8977/Uncensored_Qwen1.5_1.8B_Chat:Q4_K_M
+
+or:
+
+Environment: VS Code
+Model: hf.co/ICEPVP8977/Uncensored_Qwen1.5_1.8B_Chat:Q4_K_M
+
+==================================================
+4. VS CODE ENVIRONMENT
+==================================================
+
+VS Code must use the existing Replit OpenAI-compatible API.
+
+Architecture:
+
+VS Code
+↓
+Replit /api/v1
+↓
+Ollama
+↓
+Active model
+
+Provide a VS Code Setup section showing:
+
+- Complete API base URL
+- API key instructions
+- Model name
+- Connection instructions
+- Test connection
+
+Do not expose the API key publicly.
+
+Do not create another AI API.
+
+The VS Code environment is for application development and coding.
+
+==================================================
+5. KALI LINUX ENVIRONMENT
+==================================================
+
+Open Interpreter must run INSIDE the user's Kali Linux VirtualBox VM.
+
+Do NOT require Open Interpreter to run on Windows for the Kali environment.
+
+Architecture:
+
+Kali VM
+↓
+Kali Agent / Bridge
+↓
+Open Interpreter
+↓
+Replit OpenAI-compatible API
+↓
+Ollama
+↓
+Active model
+
+Implement the missing Kali Agent/Bridge.
+
+The Kali Agent is a separate connector program that runs inside Kali.
+
+It must:
+
+- Run locally inside the Kali VM
+- Authenticate with the Replit server
+- Maintain an authenticated outbound connection
+- Register the Kali environment
+- Have a unique agent ID
+- Report online/offline status
+- Report last-seen time
+- Receive authorized tasks from the Chat interface
+- Pass tasks to the local Open Interpreter process
+- Return results/status to the Replit dashboard
+- Reconnect automatically after connection loss
+- Allow the user to disconnect/revoke the agent
+
+Do NOT expose the Kali service directly to the public Internet.
+
+Do NOT claim Kali is connected simply because configuration exists.
+
+Only show:
+
+Kali Agent: ONLINE
+
+after the actual Kali-side connector has authenticated and established a connection.
+
+==================================================
+6. OPEN INTERPRETER
+==================================================
+
+Open Interpreter remains installed inside Kali.
+
+Provide exact Kali setup instructions/generated setup script for configuring Open Interpreter to use the existing Replit OpenAI-compatible API.
+
+Use environment variables for credentials.
+
+The configuration must support:
+
+API_BASE_URL=<complete Replit /api/v1 URL>
+API_KEY=<Kali credential>
+MODEL=<currently selected model>
+
+Use Open Interpreter's supported OpenAI-compatible provider configuration.
+
+Do not invent an incompatible API format.
+
+Do not put credentials in frontend code.
+
+The Kali-side agent and Open Interpreter must remain local to the Kali VM.
+
+==================================================
+7. KALI DESKTOP ENVIRONMENT
+==================================================
+
+The Kali environment is intended to allow the agent to interact with the user's Kali VM environment, including normal terminal and desktop workflows.
+
+The architecture must support the Kali-side agent communicating with local Open Interpreter and the local Kali environment.
+
+Support the ability for the agent to work with:
+
+- Terminal
+- Files
+- Folders
+- Installed applications
+- GUI applications
+- Desktop workflows
+- Normal system administration tasks
+- Kali tools
+
+The remote dashboard is only the control interface. The actual environment operations occur inside the Kali VM.
+
+==================================================
+8. ENVIRONMENT CONNECTION STATUS
+==================================================
+
+Add a Connected Environments section in Settings.
+
+Display:
+
+VS Code
+Status: ONLINE/OFFLINE
+
+Kali Linux
+Status: ONLINE/OFFLINE
+
+For Kali provide:
+
+- Generate/rotate pairing credential
+- Copy setup instructions
+- Connection status
+- Last seen
+- Agent ID
+- Disconnect/revoke agent
+
+Never display secret credentials in full.
+
+==================================================
+9. CHAT ROUTING
+==================================================
+
+When VS Code is selected:
+
+Chat
+↓
+VS Code environment
+↓
+Replit API
+↓
+Active model
+
+When Kali Linux is selected:
+
+Chat
+↓
+Kali Agent
+↓
+Open Interpreter
+↓
+Kali VM
+
+The Chat interface must clearly show which environment is currently selected.
+
+==================================================
+10. MEMORY
+==================================================
+
+Preserve the existing persistent Memory system.
+
+Chat conversations and persistent memory must remain separate.
+
+Relevant persistent memories must be available to both environments.
+
+If the user explicitly asks the agent to remember something, save it to persistent memory.
+
+Do not automatically store every chat message as permanent memory.
+
+==================================================
+11. CONVERSATION HISTORY
+==================================================
+
+Store conversations separately from persistent memory.
+
+Support:
+
+- New conversation
+- Conversation history
+- Continue previous conversation
+- Delete conversation
+- Clear current conversation
+
+==================================================
+12. API / ENVIRONMENT TESTING
+==================================================
+
+Add proper tests for:
+
+API connection
+Ollama connection
+Model availability
+Model inference
+VS Code connection
+Kali Agent connection
+Open Interpreter connection
+
+Show individual statuses:
+
+API: CONNECTED
+Ollama: CONNECTED
+Model: AVAILABLE
+Inference: SUCCESSFUL
+VS Code: CONNECTED/DISCONNECTED
+Kali Agent: CONNECTED/DISCONNECTED
+Open Interpreter: CONNECTED/DISCONNECTED
+
+Do not show CONNECTED unless the actual connection has been tested successfully.
+
+==================================================
+13. MOBILE UI
+==================================================
+
+Keep the existing mobile-friendly design.
+
+The Chat interface must work properly on a phone.
+
+The message input must remain usable when the mobile keyboard opens.
+
+The navigation must remain usable on mobile.
+
+==================================================
+14. USAGE
+==================================================
+
+Do not add artificial:
+
+- RPM limits
+- TPM limits
+- Hourly quotas
+- Cooldowns
+- Session limits
+
+The system should remain usable continuously, including 24/7, subject only to actual available Replit, network, computer, VM, and Ollama resources.
+
+==================================================
+15. FINAL ARCHITECTURE
+==================================================
+
+The completed architecture must be:
+
+                         PHONE
+                           │
+                           ▼
+                    REPLIT CHAT
+                           │
+                      /api/v1
+                           │
+              ┌────────────┴────────────┐
+              │                         │
+              ▼                         ▼
+           VS CODE                 KALI AGENT
+              │                         │
+              │                   Open Interpreter
+              │                         │
+              │                    Kali Linux VM
+              │                         │
+              └────────────┬────────────┘
+                           │
+                           ▼
+                         OLLAMA
+                           │
+                           ▼
+              Qwen 1.5 1.8B Q4_K_M
+
+The dashboard must contain:
+
+Overview
+Chat
+Models
+Memory
+Settings
+
+Do not remove existing functionality.
+
+==================================================
+16. IMPORTANT IMPLEMENTATION REQUIREMENT
+==================================================
+
+Before making changes, inspect the existing code and reuse the current architecture.
+
+Do NOT rebuild the project from scratch.
+
+Do NOT duplicate existing APIs.
+
+Do NOT create a second model manager.
+
+Do NOT create a second memory system.
+
+Do NOT create a second AI provider.
+
+Extend the existing implementation.
+
+After implementation:
+
+1. Run the project's tests/type checks.
+2. Start the application.
+3. Verify the API.
+4. Verify Ollama/model status.
+5. Verify Chat.
+6. Verify VS Code configuration.
+7. Verify Kali Agent registration logic.
+8. Verify mobile UI.
+9. Provide the exact commands I must run inside my Kali VM to install/configure the Kali Agent and Open Interpreter.
+10. Clearly identify anything that cannot be tested until the Kali VM is connected.
+
+Do not claim the Kali environment is connected until the Kali-side agent actually connects.
